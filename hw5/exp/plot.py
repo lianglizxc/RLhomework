@@ -88,13 +88,7 @@ def get_datasets(fpath, condition=None):
     return datasets
 
 
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('logdir', nargs='*')
-    parser.add_argument('--legend', nargs='*')
-    parser.add_argument('--value', default='AverageReturn', nargs='*')
-    args = parser.parse_args()
+def main(args):
 
     use_legend = False
     if args.legend is not None:
@@ -118,4 +112,15 @@ def main():
         plot_data(data, value=value)
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('logdir', nargs='*')
+    parser.add_argument('--legend', nargs='*')
+    parser.add_argument('--value', default='AverageReturn', nargs='*')
+    args = parser.parse_args()
+    args.logdir = ['data/ac_PM_bc0_s8_PointMass-v0_01-02-2019_14-30-49',
+                   'data/ac_PM_hist_bc0.01_s8_PointMass-v0_01-02-2019_14-36-47']
+
+    args.legend = ['PlainPointMass','HistPointMass']
+    args.value = ['AverageReturn', 'StdReturn']
+    main(args)

@@ -3,6 +3,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from ex_utils import build_mlp
 
+
 class Density_Model(object):
     def __init__(self):
         super(Density_Model, self).__init__()
@@ -37,7 +38,9 @@ class Histogram(Density_Model):
                 2. increment self.total by "increment" 
         """
         bin_name = self.preprocessor(state)
-        raise NotImplementedError
+        self.hist[bin_name] += increment
+        self.total += increment
+
 
     def get_count(self, states):
         """
@@ -55,7 +58,10 @@ class Histogram(Density_Model):
                     1. get the bin_name using self.preprocessor
                     2. get the value of self.hist with key bin_name
         """
-        raise NotImplementedError
+        counts = np.zeros(states.shape[0])
+        for i, s in enumerate(states):
+            bin_name = self.preprocessor(s)
+            counts[i] = self.hist[bin_name]
         return counts
 
     def get_prob(self, states):
@@ -72,7 +78,8 @@ class Histogram(Density_Model):
             NOTE:
                 remember to normalize by float(self.total)
         """
-        raise NotImplementedError
+        all_counts = self.get_count(states)
+        probs = all_counts / self.total
         return probs
 
 class RBF(Density_Model):
@@ -139,19 +146,23 @@ class RBF(Density_Model):
             assert states.ndim == self.means.ndim and ob_dim == replay_dim
 
             # 1. Compute deltas
-            deltas = raise NotImplementedError
+            raise NotImplementedError
+            deltas = None
             assert deltas.shape == (b, B, ob_dim)
 
             # 2. Euclidean distance
-            euc_dists = raise NotImplementedError
+            raise NotImplementedError
+            euc_dists = None
             assert euc_dists.shape == (b, B)
 
             # Gaussian
-            gaussians = raise NotImplementedError
+            raise NotImplementedError
+            gaussians = None
             assert gaussians.shape == (b, B)
 
             # 4. Average
-            densities = raise NotImplementedError
+            raise NotImplementedError
+            densities = None
             assert densities.shape == (b,)
 
             return densities
@@ -229,8 +240,9 @@ class Exemplar(Density_Model):
 
             Hint: use build_mlp
         """
-        z_mean = raise NotImplementedError
-        z_logstd = raise NotImplementedError
+        raise NotImplementedError
+        z_mean = None
+        z_logstd = None
         return tfp.distributions.MultivariateNormalDiag(loc=z_mean, scale_diag=tf.exp(z_logstd))
 
     def make_prior(self, z_size):
@@ -245,8 +257,9 @@ class Exemplar(Density_Model):
                 prior_mean and prior_logstd are for a standard normal distribution
                     both have dimension z_size
         """
-        prior_mean = raise NotImplementedError
-        prior_logstd = raise NotImplementedError
+        raise NotImplementedError
+        prior_mean = None
+        prior_logstd = None
         return tfp.distributions.MultivariateNormalDiag(loc=prior_mean, scale_diag=tf.exp(prior_logstd))
 
     def make_discriminator(self, z, output_size, scope, n_layers, hid_size):
@@ -268,7 +281,8 @@ class Exemplar(Density_Model):
 
             Hint: use build_mlp
         """
-        logit = raise NotImplementedError
+        raise NotImplementedError
+        logit = None
         return tfp.distributions.Bernoulli(logit)
 
     def forward_pass(self, state1, state2):
@@ -306,9 +320,10 @@ class Exemplar(Density_Model):
         prior = self.make_prior(self.hid_dim/2)
 
         # Sampled Latent
-        z1 = raise NotImplementedError
-        z2 = raise NotImplementedError
-        z = raise NotImplementedError
+        raise NotImplementedError
+        z1 = None
+        z2 = None
+        z = None
 
         # Discriminator
         discriminator = make_discriminator(z, 1, 'discriminator', n_layers=2, hid_size=self.hid_dim)
@@ -372,8 +387,9 @@ class Exemplar(Density_Model):
                     compute the probability density of x from the discriminator
                     likelihood (see homework doc)
         """
-        likelihood = raise NotImplementedError
+        raise NotImplementedError
+        likelihood = None
         # avoid divide by 0 and log(0)
         likelihood = np.clip(np.squeeze(likelihood), 1e-5, 1-1e-5)
-        prob = raise NotImplementedError
+        prob = None
         return prob

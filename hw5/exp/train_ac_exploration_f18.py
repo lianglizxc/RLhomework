@@ -14,6 +14,8 @@ import time
 import inspect
 from multiprocessing import Process
 
+
+
 from exploration import ExemplarExploration, DiscreteExploration, RBFExploration
 from density_model import Exemplar, Histogram, RBF
 
@@ -197,6 +199,7 @@ class Agent(object):
             sy_logprob_n = tf.distributions.Categorical(logits=sy_logits_na).log_prob(sy_ac_na)
         else:
             sy_mean, sy_logstd = policy_parameters
+
             sy_logprob_n = tfp.distributions.MultivariateNormalDiag(
                 loc=sy_mean, scale_diag=tf.exp(sy_logstd)).log_prob(sy_ac_na)  
         return sy_logprob_n
@@ -460,6 +463,7 @@ def train_AC(
 
     ########################################################################
     # Initalize exploration density model
+
     if dm != 'none':
         if env_name == 'PointMass-v0' and dm == 'hist':
             density_model = Histogram(
@@ -540,14 +544,14 @@ def train_AC(
             elif dm == 'hist' or dm == 'rbf':
                 ### PROBLEM 1
                 ### YOUR CODE HERE
-                raise NotImplementedError
+                exploration.fit_density_model(ob_no)
             else:
                 assert False
 
             # 2. Modify the reward
             ### PROBLEM 1
             ### YOUR CODE HERE
-            raise NotImplementedError
+            re_n = exploration.modify_reward(old_re_n, ob_no)
 
             print('average state', np.mean(ob_no, axis=0))
             print('average action', np.mean(ac_na, axis=0))
@@ -592,6 +596,37 @@ def train_AC(
         logz.log_tabular("TimestepsSoFar", total_timesteps)
         logz.dump_tabular()
         logz.pickle_tf_vars()
+
+
+def train_func(args, seed, logdir, max_path_length):
+    train_AC(
+        exp_name=args.exp_name,
+        env_name=args.env_name,
+        n_iter=args.n_iter,
+        gamma=args.discount,
+        min_timesteps_per_batch=args.batch_size,
+        max_path_length=max_path_length,
+        learning_rate=args.learning_rate,
+        num_target_updates=args.num_target_updates,
+        num_grad_steps_per_target_update=args.num_grad_steps_per_target_update,
+        animate=args.render,
+        logdir=os.path.join(logdir,'%d'%seed),
+        normalize_advantages=not(args.dont_normalize_advantages),
+        seed=seed,
+        n_layers=args.n_layers,
+        size=args.size,
+        ########################################################################
+        bonus_coeff=args.bonus_coeff,
+        kl_weight=args.kl_weight,
+        density_lr=args.density_lr,
+        density_train_iters=args.density_train_iters,
+        density_batch_size=args.density_batch_size,
+        density_hiddim=args.density_hiddim,
+        dm=args.density_model,
+        replay_size=args.replay_size,
+        sigma=args.sigma
+        ########################################################################
+        )
 
 def main():
     import argparse
@@ -642,39 +677,9 @@ def main():
         seed = args.seed + 10*e
         print('Running experiment with seed %d'%seed)
 
-        def train_func():
-            train_AC(
-                exp_name=args.exp_name,
-                env_name=args.env_name,
-                n_iter=args.n_iter,
-                gamma=args.discount,
-                min_timesteps_per_batch=args.batch_size,
-                max_path_length=max_path_length,
-                learning_rate=args.learning_rate,
-                num_target_updates=args.num_target_updates,
-                num_grad_steps_per_target_update=args.num_grad_steps_per_target_update,
-                animate=args.render,
-                logdir=os.path.join(logdir,'%d'%seed),
-                normalize_advantages=not(args.dont_normalize_advantages),
-                seed=seed,
-                n_layers=args.n_layers,
-                size=args.size,
-                ########################################################################
-                bonus_coeff=args.bonus_coeff,
-                kl_weight=args.kl_weight,
-                density_lr=args.density_lr,
-                density_train_iters=args.density_train_iters,
-                density_batch_size=args.density_batch_size,
-                density_hiddim=args.density_hiddim,
-                dm=args.density_model,
-                replay_size=args.replay_size,
-                sigma=args.sigma
-                ########################################################################
-                )
-
         # # Awkward hacky process runs, because Tensorflow does not like
         # # repeatedly calling train_AC in the same thread.
-        p = Process(target=train_func, args=tuple())
+        p = Process(target=train_func, args=(args, seed, logdir, max_path_length))
         p.start()
         processes.append(p)
         # if you comment in the line below, then the loop will block 
