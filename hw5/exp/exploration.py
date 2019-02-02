@@ -42,7 +42,7 @@ class Exploration(object):
                 and store that in new_rewards, which you will return
         """
         bonus = self.compute_reward_bonus(states)
-        new_rewards = rewards + bonus
+        new_rewards = rewards + self.bonus_coeff * bonus
         return new_rewards
 
 class DiscreteExploration(Exploration):
@@ -68,7 +68,7 @@ class DiscreteExploration(Exploration):
             args:
                 count: np array (bsize)
         """
-        return 1 / np.sqrt(count)
+        return count ** -0.5
 
     def compute_reward_bonus(self, states):
         """
@@ -100,7 +100,7 @@ class ContinuousExploration(Exploration):
             args:
                 prob: np array (bsize,)
         """
-        raise NotImplementedError
+        return -np.log(prob)
 
     def compute_reward_bonus(self, states):
         """
@@ -110,9 +110,9 @@ class ContinuousExploration(Exploration):
             args:
                 states: (bsize, ob_dim)
         """
-        raise NotImplementedError
-        prob = None
-        bonus = None
+
+        prob = self.density_model.get_prob(states)
+        bonus = self.bonus_function(prob)
         return bonus
 
 

@@ -12,7 +12,9 @@ import logz
 import os
 import time
 import inspect
+import shutil
 from multiprocessing import Process
+
 
 
 
@@ -551,7 +553,8 @@ def train_AC(
             # 2. Modify the reward
             ### PROBLEM 1
             ### YOUR CODE HERE
-            re_n = exploration.modify_reward(old_re_n, ob_no)
+
+            re_n = exploration.modify_reward(re_n, ob_no)
 
             print('average state', np.mean(ob_no, axis=0))
             print('average action', np.mean(ac_na, axis=0))
@@ -567,7 +570,6 @@ def train_AC(
 
         if n_iter - itr < 10:
             max_reward_path_idx = np.argmax(np.array([path["reward"].sum() for path in paths]))
-            print(paths[max_reward_path_idx]['reward'])
 
         # Log diagnostics
         returns = [path["reward"].sum() for path in paths]
@@ -664,10 +666,13 @@ def main():
 
     if not (os.path.exists(data_path)):
         os.makedirs(data_path)
-    logdir = 'ac_' + args.exp_name + '_' + args.env_name + '_' + time.strftime("%d-%m-%Y_%H-%M-%S")
+    # logdir = 'ac_' + args.exp_name + '_' + args.env_name + '_' + time.strftime("%d-%m-%Y_%H-%M-%S")
+    logdir = 'ac_' + args.exp_name + '_' + args.env_name
     logdir = os.path.join(data_path, logdir)
-    if not(os.path.exists(logdir)):
-        os.makedirs(logdir)
+    if os.path.exists(logdir):
+        shutil.rmtree(logdir)
+
+    os.makedirs(logdir)
 
     max_path_length = args.ep_len if args.ep_len > 0 else None
 
