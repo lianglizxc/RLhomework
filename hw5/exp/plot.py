@@ -119,8 +119,8 @@ if __name__ == "__main__":
     parser.add_argument('--value', default='AverageReturn', nargs='*')
     args = parser.parse_args()
     args.logdir = ['data/ac_PM_bc0_s8_PointMass-v0',
-                   'data/ac_PM_rbf_bc0.01_s8_sig0.2_PointMass-v0']
+                   'data/ac_PM_ex2_s8_bc0.05_kl0.1_dlr0.001_dh8_PointMass-v0']
 
-    args.legend = ['noExplorePointMass','rbfPointMass']
+    args.legend = ['noExplorePointMass','exp2PointMass']
     args.value = ['AverageReturn', 'StdReturn']
     main(args)
