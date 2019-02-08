@@ -103,24 +103,43 @@ class SAC:
         )
 
     def _policy_loss_for(self, policy, q_function, q_function2, value_function):
+
+        actions, log_pis = policy(self._observations_ph)
+        if q_function2 is not None:
+            q_value = tf.math.minimum(q_function((self._observations_ph, actions)),
+                                      q_function2((self._observations_ph, actions)))
+        else:
+            q_value = q_function((self._observations_ph, actions))
+
         if not self._reparameterize:
             ### Problem 1.3.A
             ### YOUR CODE HERE
-            raise NotImplementedError
+            target = tf.stop_gradient(self._alpha * log_pis - q_value + value_function(self._observations_ph))
+            return tf.reduce_mean(log_pis * target)
         else:
             ### Problem 1.3.B
             ### YOUR CODE HERE
-            raise NotImplementedError
+            return tf.reduce_mean(self._alpha * log_pis - q_value)
 
     def _value_function_loss_for(self, policy, q_function, q_function2, value_function):
         ### Problem 1.2.A
         ### YOUR CODE HERE
-        raise NotImplementedError
+        actions, log_pis = policy(self._observations_ph)
+        if q_function2 is not None:
+            q_values = tf.math.minimum(q_function((self._observations_ph, actions)),
+                                      q_function2((self._observations_ph, actions)))
+        else:
+            q_values = q_function((self._observations_ph, actions))
+        target = q_values - self._alpha * log_pis
+
+        return  tf.reduce_mean((value_function(self._observations_ph) - target) ** 2)
 
     def _q_function_loss_for(self, q_function, target_value_function):
         ### Problem 1.1.A
         ### YOUR CODE HERE
-        raise NotImplementedError
+        q_values = q_function((self._observations_ph, self._actions_ph))
+        target = self._rewards_ph + self._discount * self._terminals_ph* target_value_function(self._next_observations_ph)
+        return tf.reduce_mean((q_values - target) ** 2)
 
     def _create_target_update(self, source, target):
         """Create tensorflow operations for updating target value function."""

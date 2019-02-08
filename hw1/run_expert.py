@@ -27,7 +27,6 @@ def main():
     parser.add_argument('--num_rollouts', type=int, default=20,
                         help='Number of expert roll outs')
     args = parser.parse_args()
-    args.render = False
 
     print('loading and building expert policy')
     policy_fn = load_policy.load_policy(args.expert_policy_file)

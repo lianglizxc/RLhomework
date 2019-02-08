@@ -87,13 +87,7 @@ def get_datasets(fpath, condition=None):
     return datasets
 
 
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('logdir', nargs='*')
-    parser.add_argument('--legend', nargs='*')
-    parser.add_argument('--value', default='LastEpReturn', nargs='*')
-    args = parser.parse_args()
+def main(args):
 
     use_legend = False
     if args.legend is not None:
@@ -117,4 +111,16 @@ def main():
         plot_data(data, value=value)
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('logdir', nargs='*')
+    parser.add_argument('--legend', nargs='*')
+    parser.add_argument('--value', default='LastEpReturn', nargs='*')
+    args = parser.parse_args()
+    args.logdir = ['data/sac_HalfCheetah-v2_reinf']
+
+    args.legend = ['HalfCheetah']
+    main(args)

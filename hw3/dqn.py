@@ -6,7 +6,7 @@ import gym.spaces
 import itertools
 import numpy as np
 import random
-import tensorflow as tf
+import tensorflow                as tf
 import tensorflow.contrib.layers as layers
 from collections import namedtuple
 from dqn_utils import *
@@ -99,7 +99,6 @@ class QLearner(object):
     self.env = env
     self.session = session
     self.exploration = exploration
-    self.frame_history_len = frame_history_len
     self.rew_file = str(uuid.uuid4()) + '.pkl' if rew_file is None else rew_file
 
     ###############
@@ -162,24 +161,12 @@ class QLearner(object):
     # YOUR CODE HERE
 
     ######
-    self.q_val = q_func(obs_t_float, self.num_actions, scope="q_func", reuse=False)
-    q_val = tf.reduce_sum(self.q_val* tf.one_hot(self.act_t_ph, depth=self.num_actions), axis=1)
-
-    q_val_target = q_func(obs_tp1_float, self.num_actions, scope="q_func_target", reuse=False)
-    # q_val_target = tf.stop_gradient(q_val_target)
-    q_val_target_max = (1-self.done_mask_ph) * tf.reduce_max(q_val_target,axis=1)
-    target_one_step = self.rew_t_ph + gamma * q_val_target_max
-
-    self.total_error = tf.losses.mean_squared_error(predictions = q_val, labels = target_one_step)
-
-    q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_func')
-    target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_func_target')
 
     # construct optimization op (with gradient clipping)
     self.learning_rate = tf.placeholder(tf.float32, (), name="learning_rate")
     optimizer = self.optimizer_spec.constructor(learning_rate=self.learning_rate, **self.optimizer_spec.kwargs)
     self.train_fn = minimize_and_clip(optimizer, self.total_error,
-                                      var_list=q_func_vars, clip_val=grad_norm_clipping)
+                 var_list=q_func_vars, clip_val=grad_norm_clipping)
 
     # update_target_fn will be called periodically to copy Q network to target Q network
     update_target_fn = []
@@ -204,8 +191,6 @@ class QLearner(object):
 
     self.start_time = None
     self.t = 0
-
-    self.session.run(tf.global_variables_initializer())
 
   def stopping_criterion_met(self):
     return self.stopping_criterion is not None and self.stopping_criterion(self.env, self.t)
@@ -242,19 +227,8 @@ class QLearner(object):
     # might as well be random, since you haven't trained your net...)
 
     #####
-    self.replay_buffer.store_frame(self.last_obs)
-    index = self.replay_buffer.next_idx
-    last_state = self.replay_buffer.encode_recent_observation()
 
-    if np.random.random() > self.exploration.value(self.t):
-      action = np.random.choice(range(self.num_actions))
-    else:
-      q_val = self.session.run(self.q_val , feed_dict={self.obs_t_ph:last_state[None,]})
-      action = np.argmax(q_val, axis=1)
-
-    obs, reward, done, info =  self.env.step(action)
-    self.replay_buffer.store_effect(index, action, reward, done)
-    self.last_obs = self.env.reset() if done else obs
+    # YOUR CODE HERE
 
   def update_model(self):
     ### 3. Perform experience replay and train the network.
@@ -299,22 +273,10 @@ class QLearner(object):
       # variable self.num_param_updates useful for this (it was initialized to 0)
       #####
 
-
       # YOUR CODE HERE
-      obs_batch, act_batch, rew_batch, next_obs_batch, done_mask = self.replay_buffer.sample(self.batch_size)
-
-      if not self.model_initialized:
-        initialize_interdependent_variables(self.session, tf.global_variables(),{self.obs_t_ph: obs_batch,self.obs_tp1_ph: next_obs_batch})
-        self.model_initialized = True
-
-      _, bellman_error = self.session.run([self.train_fn, self.total_error], feed_dict={self.obs_t_ph: obs_batch ,self.act_t_ph:act_batch,
-                                                 self.rew_t_ph:rew_batch, self.obs_tp1_ph:next_obs_batch,
-                                                 self.done_mask_ph:done_mask,
-                                                 self.learning_rate:self.optimizer_spec.lr_schedule.value(self.t)})
 
       self.num_param_updates += 1
-      if self.num_param_updates % self.target_update_freq == 0:
-        self.session.run(self.update_target_fn)
+
     self.t += 1
 
   def log_progress(self):

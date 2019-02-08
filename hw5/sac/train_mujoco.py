@@ -5,6 +5,7 @@ import numpy as np
 import os
 import tensorflow as tf
 import time
+import shutil
 
 import nn
 from sac import SAC
@@ -116,6 +117,14 @@ def train_SAC(env_name, exp_name, seed, logdir):
                 logz.log_tabular(k, v)
             logz.dump_tabular()
 
+def train_func(args, seed, logdir):
+    train_SAC(
+        env_name=args.env_name,
+        exp_name=args.exp_name,
+        seed=seed,
+        logdir=os.path.join(logdir, '%d' % seed),
+    )
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env_name', type=str, default='HalfCheetah-v2')
@@ -128,8 +137,11 @@ def main():
 
     if not (os.path.exists(data_path)):
         os.makedirs(data_path)
-    logdir = 'sac_' + args.env_name + '_' + args.exp_name + '_' + time.strftime("%d-%m-%Y_%H-%M-%S")
+    logdir = 'sac_' + args.env_name + '_' + args.exp_name
     logdir = os.path.join(data_path, logdir)
+
+    if os.path.exists(logdir):
+        shutil.rmtree(logdir)
 
     processes = []
 
@@ -137,16 +149,9 @@ def main():
         seed = args.seed + 10*e
         print('Running experiment with seed %d'%seed)
 
-        def train_func():
-            train_SAC(
-                env_name=args.env_name,
-                exp_name=args.exp_name,
-                seed=seed,
-                logdir=os.path.join(logdir, '%d' % seed),
-            )
         # # Awkward hacky process runs, because Tensorflow does not like
         # # repeatedly calling train_AC in the same thread.
-        p = Process(target=train_func, args=tuple())
+        p = Process(target=train_func, args=(args, seed, logdir))
         p.start()
         processes.append(p)
         # if you comment in the line below, then the loop will block
