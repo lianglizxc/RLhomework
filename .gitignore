@@ -92,3 +92,4 @@ ENV/
 *.pdf
 expert_data/
 data/
+output/
