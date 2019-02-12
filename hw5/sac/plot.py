@@ -112,15 +112,12 @@ def main(args):
 
 if __name__ == "__main__":
     import argparse
-
-    import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument('logdir', nargs='*')
     parser.add_argument('--legend', nargs='*')
     parser.add_argument('--value', default='LastEpReturn', nargs='*')
     args = parser.parse_args()
     args.logdir = ['data/sac_HalfCheetah-v2_reinf']
-
+    args.value = ['LastEpReturn', 'MaxEpReturn']
     args.legend = ['HalfCheetah']
     main(args)

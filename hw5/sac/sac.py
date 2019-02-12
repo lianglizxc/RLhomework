@@ -105,8 +105,9 @@ class SAC:
     def _policy_loss_for(self, policy, q_function, q_function2, value_function):
 
         actions, log_pis = policy(self._observations_ph)
+        log_pis = tf.expand_dims(log_pis, 1)
         if q_function2 is not None:
-            q_value = tf.math.minimum(q_function((self._observations_ph, actions)),
+            q_value = tf.minimum(q_function((self._observations_ph, actions)),
                                       q_function2((self._observations_ph, actions)))
         else:
             q_value = q_function((self._observations_ph, actions))
@@ -125,20 +126,23 @@ class SAC:
         ### Problem 1.2.A
         ### YOUR CODE HERE
         actions, log_pis = policy(self._observations_ph)
+        log_pis = tf.expand_dims(log_pis, 1)
         if q_function2 is not None:
-            q_values = tf.math.minimum(q_function((self._observations_ph, actions)),
+            q_values = tf.minimum(q_function((self._observations_ph, actions)),
                                       q_function2((self._observations_ph, actions)))
         else:
             q_values = q_function((self._observations_ph, actions))
-        target = q_values - self._alpha * log_pis
 
+        target = q_values - self._alpha * log_pis
         return  tf.reduce_mean((value_function(self._observations_ph) - target) ** 2)
 
     def _q_function_loss_for(self, q_function, target_value_function):
         ### Problem 1.1.A
         ### YOUR CODE HERE
         q_values = q_function((self._observations_ph, self._actions_ph))
-        target = self._rewards_ph + self._discount * self._terminals_ph* target_value_function(self._next_observations_ph)
+        reward = tf.expand_dims(self._rewards_ph, 1)
+        terminals = tf.expand_dims(self._terminals_ph, 1)
+        target = reward + self._discount * (1 - terminals) * target_value_function(self._next_observations_ph)
         return tf.reduce_mean((q_values - target) ** 2)
 
     def _create_target_update(self, source, target):
@@ -175,6 +179,9 @@ class SAC:
                 }
                 tf.get_default_session().run(self._training_ops, feed_dict)
                 tf.get_default_session().run(self._target_update_ops)
+                # debug = tf.get_default_session().run(self.debug, feed_dict)
+                # print('qvalue shape', debug.shape)
+
 
             yield epoch
 

@@ -27,6 +27,15 @@ class PointEnv(Env):
         #                           ----------PROBLEM 3----------
         #====================================================================================#
         # YOUR CODE HERE
+        # if is_evaluation:
+        #     self.task_idx = (self.task_idx + 1) % len(self.tasks)
+        # # during training, sample tasks randomly
+        # else:
+        #     self.task_idx = np.random.randint(len(self.tasks))
+        # self._task = self.tasks[self.task_idx]
+        # goals = [[-1, -1], [-1, 1], [1, -1], [1, 1]]
+        # self._goal = np.array(goals[self.task_idx])*10
+
         x = np.random.uniform(-10, 10)
         y = np.random.uniform(-10, 10)
         self._goal = np.array([x, y])

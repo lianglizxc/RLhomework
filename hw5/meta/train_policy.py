@@ -17,7 +17,7 @@ import os
 import time
 import inspect
 from multiprocessing import Process
-
+import shutil
 from replay_buffer import ReplayBuffer, PPOReplayBuffer
 
 from point_mass import PointEnv
@@ -79,6 +79,7 @@ def build_rnn(x, h, output_size, scope, n_layers, size, activation=tf.tanh, outp
         x = build_mlp(x, output_size, scope, n_layers, size, output_activation=output_activation, regularizer=regularizer)
         cell = tf.nn.rnn_cell.GRUCell(output_size, activation = activation)
         outputs, state = tf.nn.dynamic_rnn(cell, x, initial_state = h, dtype=tf.float32)
+        outputs = tf.contrib.layers.flatten(outputs)
         return outputs, state
 
 
@@ -305,6 +306,7 @@ class Agent(object):
         policy_outputs = self.policy_forward_pass(self.sy_ob_no, self.sy_hidden)
         self.policy_parameters = policy_outputs[:-1]
 
+
         # unpack mean and variance
         self.policy_parameters = tf.split(self.policy_parameters[0], 2, axis=1)
 
@@ -318,11 +320,12 @@ class Agent(object):
 
         # PPO critic update
         critic_regularizer = tf.contrib.layers.l2_regularizer(1e-3) if self.l2reg else None
+        # critic_regularizer = None
         self.critic_prediction = tf.squeeze(build_critic(self.sy_ob_no, self.sy_hidden, 1, 'critic_network', n_layers=self.n_layers, size=self.size, gru_size=self.gru_size, recurrent=self.recurrent, regularizer=critic_regularizer))
         self.sy_target_n = tf.placeholder(shape=[None], name="critic_target", dtype=tf.float32)
-        self.critic_loss = tf.losses.mean_squared_error(self.sy_target_n, self.critic_prediction)
+        self.critic_loss = tf.reduce_mean((self.sy_target_n - self.critic_prediction) ** 2)
         self.critic_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='critic_network')
-        self.critic_update_op = tf.train.AdamOptimizer(self.learning_rate).minimize(self.critic_loss)
+        self.critic_update_op = tf.train.AdamOptimizer(self.learning_rate).minimize(self.critic_loss,var_list=self.critic_weights)
 
         # PPO actor update
         self.sy_fixed_log_prob_n = tf.placeholder(shape=[None], name="fixed_log_prob", dtype=tf.float32)
@@ -385,28 +388,39 @@ class Agent(object):
                 # set a, r, d to zero, construct first meta observation in meta_obs
                 # YOUR CODE HERE
                 # self.meta_ob_dim = self.ob_dim + self.ac_dim + self.reward_dim + self.terminal_dim
-                meta_obs[steps] = np.concatenate([ob, ard], axis=0)
+
+                meta_obs[steps, :] = np.concatenate([ob, ard], axis=0)
                 steps += 1
 
             # index into the meta_obs array to get the window that ends with the current timestep
             # please name the windowed observation `in_` for compatibilty with the code that adds to the replay buffer (lines 418, 420)
             # YOUR CODE HERE
+            if steps >= self.history:
+                in_ = meta_obs[steps-self.history: steps]
+            else:
+                in_ = meta_obs[:steps]
+                miss = np.zeros([self.history - steps, self.meta_ob_dim])
+                in_ = np.concatenate([miss, in_] ,axis=0)
 
-            in_ = meta_obs[steps]
+            assert len(in_) == self.history
             hidden = np.zeros((1, self.gru_size), dtype=np.float32)
-
             # get action from the policy
             # YOUR CODE HERE
-            ac = self.sess.run(self.sy_sampled_ac, feed_dict={self.sy_ob_no: None,
-                                                                  self.sy_hidden: hidden})
+            ac = self.sess.run(self.sy_sampled_ac, feed_dict={self.sy_ob_no: [in_],
+                                            self.sy_hidden: hidden})
             # step the environment
             # YOUR CODE HERE
+            ac = ac[0]
             ob, rew, done, _ = env.step(ac)
             ep_steps += 1
 
             done = bool(done) or ep_steps == self.max_path_length
             # construct the meta-observation and add it to meta_obs
             # YOUR CODE HERE
+            # meta_observation = (s, a, r, d)
+            meta_observation = np.concatenate([ob, ac, [rew], [done]], axis = 0)
+            assert len(meta_observation) == self.meta_ob_dim
+            meta_obs[steps,:] = meta_observation
 
             rewards.append(rew)
             steps += 1
@@ -521,8 +535,9 @@ class Agent(object):
             nothing
 
         """
-        self.update_critic(ob_no, hidden, q_n)
+        critic_loss = self.update_critic(ob_no, hidden, q_n)
         self.update_policy(ob_no, hidden, ac_na, fixed_log_probs, adv_n)
+        return critic_loss
 
     def update_critic(self, ob_no, hidden, q_n):
         """
@@ -734,7 +749,7 @@ def train_PG(
             log_probs = agent.sess.run(agent.sy_lp_n,
                 feed_dict={agent.sy_ob_no: ob_no, agent.sy_hidden: hidden, agent.sy_ac_na: ac_na})
 
-            agent.update_parameters(ob_no, hidden, ac_na, fixed_log_probs, q_n, adv_n)
+            critic_loss = agent.update_parameters(ob_no, hidden, ac_na, fixed_log_probs, q_n, adv_n)
 
         # compute validation statistics
         print('Validating...')
@@ -825,13 +840,18 @@ def main():
     parser.add_argument('--l2reg', '-reg', action='store_true')
     parser.add_argument('--recurrent', '-rec', action='store_true')
     args = parser.parse_args()
+    args.recurrent = 1
+
 
     if not(os.path.exists('data')):
         os.makedirs('data')
-    logdir = args.exp_name + '_' + args.env_name + '_' + time.strftime("%d-%m-%Y_%H-%M-%S")
+    # logdir = args.exp_name + '_' + args.env_name + '_' + time.strftime("%d-%m-%Y_%H-%M-%S")
+    logdir = args.exp_name + '_' + args.env_name
     logdir = os.path.join('data', logdir)
-    if not(os.path.exists(logdir)):
-        os.makedirs(logdir)
+    if os.path.exists(logdir):
+        shutil.rmtree(logdir)
+
+    os.makedirs(logdir)
 
     max_path_length = args.ep_len if args.ep_len > 0 else None
 
